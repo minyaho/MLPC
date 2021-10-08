@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg,NavigationToolbar2Tk #NavigationToolbar2TkAg
 import numpy as np
 from numpy.core.fromnumeric import size
+from mlp import NeuralNetMLP
 
 class Application():
 
@@ -23,52 +24,83 @@ class Application():
         self.n = 1              # 學習循環次數
         self.dim = 0            # 資料維度
         self.root = tk.Tk()
+        self.mlp = None         # MLP 模型
 
         # Row 0
         self.lb_1 = tk.Label(self.root, text="Multi-layer Perceptron Classifier" , font=(self.font_name, 18))#, width="30", height="5")
         self.lb_1.grid(row=0,column=0, columnspan=3, pady=5)
 
         # Row 1
-        self.lb_0 = tk.Label(self.root, text="開啟文件" , font=(self.font_name, 9))#, width="30", height="5")
-        self.lb_0.grid(row=1,column=0)
-        self.bt_1 = tk.Button(self.root, text='開啟', font=(self.font_name, 9), command=self.open_file)
-        self.bt_1.grid(row=2, column=0)
+        self.frame_open = tk.Frame(self.root)
+        self.lb_0 = tk.Label(self.frame_open, text="開啟文件" , font=(self.font_name, 10))#, width="30", height="5")
+        self.lb_0.grid(row=0,column=0)
+        self.bt_1 = tk.Button(self.frame_open, text='開啟', font=(self.font_name, 10), command=self.open_file)
+        self.bt_1.grid(row=0, column=1)
+        self.frame_open.grid(row=1, column=0)
+
         # self.lb_5 = tk.Label(self.root, text="測試文件" , font=(self.font_name, 9))#, width="30", height="5")
         # self.lb_5.grid(row=1,column=1)
         # self.bt_3 = tk.Button(self.root, text='開啟', font=(self.font_name, 9), command=lambda:self.open_file(type='test'))
         # self.bt_3.grid(row=2, column=1)
 
         # Row 2
-        self.lb_2 = tk.Label(self.root, text="學習率" , font=(self.font_name, 9))#, width="30", height="5")
-        self.lb_2.grid(row=3,column=0)
-        self.entry_1 = tk.Entry(self.root, width='10')
-        self.entry_1.grid(row=4, column=0)
+        self.frame_train_set = tk.Frame(self.root)
+        self.lb_train_set = tk.Label(self.frame_train_set, text="訓練設定----" , font=(self.font_name, 10))#, width="30", height="5"
+        self.lb_train_set.grid(row=0,column=0)
+        self.lb_eta = tk.Label(self.frame_train_set, text="學習率" , font=(self.font_name, 10))#, width="30", height="5")
+        self.lb_eta.grid(row=1,column=0)
+        self.entry_eta = tk.Entry(self.frame_train_set ,width='10')
+        self.entry_eta.insert(0,'0.1')
+        self.entry_eta.grid(row=1, column=1)
+        self.lb_mbatch = tk.Label(self.frame_train_set, text="最小批次數" , font=(self.font_name, 10))#, width="30", height="5")
+        self.lb_mbatch.grid(row=2,column=0)
+        self.entry_mbatch = tk.Entry(self.frame_train_set ,width='10')
+        self.entry_mbatch.insert(0,'1')
+        self.entry_mbatch.grid(row=2, column=1)
+        self.frame_train_set.grid(row=2, column=0)
 
         # Row 3
-        self.lb_3 = tk.Label(self.root, text="收斂條件" , font=(self.font_name, 9))#, width="30", height="5")
-        self.lb_3.grid(row=3,column=1)
-        self.cbt_1 = tk.Checkbutton(self.root)
-        self.optionList = ("學習循環次數", "誤差限制")
-        self.v = tk.StringVar()
-        self.v.set("選項")
-        self.optionmenu = tk.OptionMenu(self.root, self.v, *self.optionList)
-        self.optionmenu.grid(row=4, column=1)
+        self.frame_set = tk.Frame(self.root)
+        self.lb_set = tk.Label(self.frame_set, text="收斂條件----" , font=(self.font_name, 10))#, width="30", height="5")
+        self.lb_set.grid(row=0,column=0)
+        # self.chk_e = tk.Checkbutton(self.frame_set, text='學習循環次數', state=tk.DISABLED) 
+        # self.chk_e.select()
+        # self.chk_e.grid(row=1, column=0)
+        self.lb_epoch = tk.Label(self.frame_set, text="學習循環次數" , font=(self.font_name, 10))
+        self.lb_epoch.grid(row=1,column=0)
+        self.entry_epoch = tk.Entry(self.frame_set ,width='10')
+        self.entry_epoch.insert(0,'10')
+        self.entry_epoch.grid(row=1, column=1)
+        self.chk_cost = tk.Checkbutton(self.frame_set, text="成本限制" , font=(self.font_name, 10))
+        self.chk_cost.grid(row=2,column=0)
+        self.entry_cost = tk.Entry(self.frame_set ,width='10')
+        self.entry_cost.grid(row=2, column=1)
+        self.frame_set.grid(row=2, column=1)
+
+        #self.cbt_= tk.Checkbutton(self.frame_set)
+        # self.optionList = ("學習循環次數", "誤差限制")
+        # self.v = tk.StringVar()
+        # self.v.set("選項")
+        # self.optionmenu = tk.OptionMenu(self.frame_set, self.v, *self.optionList)
+        # self.optionmenu.grid(row=0, column=1)
+
 
         # Row 4
-        self.lb_3 = tk.Label(self.root, text="輸出結果" , font=(self.font_name, 9))#, width="30", height="5")
+        self.lb_3 = tk.Label(self.root, text="輸出結果" , font=(self.font_name, 10))#, width="30", height="5")
         self.lb_3.grid(row=7,column=0)
-        self.text = tk.Text(self.root)
+        self.textframe = tk.Frame(self.root)
+        # self.textframe["height"] = 10
+        # self.textframe["width"] = 30
+        self.scrollbar = tk.Scrollbar(self.textframe)
+        self.scrollbar.pack(side=tk.RIGHT,fill=tk.Y)
+        self.text = tk.Text(self.textframe, yscrollcommand=self.scrollbar.set)
         self.text["height"] = 10
-        self.text["width"] = 30
-        # # 設定 tag
-        # self.text.tag_config("tag_1", backgroun="yellow", foreground="red")
-        # "insert" 索引表示插入游標當前的位置
+        self.text["width"] = 50
         self.text.insert('1.0', "初始化，請開啟文件")
-        #print(self.text.get(1.0,"end"))
-        self.text['state'] = 'disabled'
-        self.text['state'] = 'normal'
-        #self.text.delete(1.0,"end")
-        self.text.grid(row=8, column=0, padx=5 , columnspan=2)
+        self.text.pack(side=tk.LEFT,fill=tk.BOTH)
+        self.scrollbar.config(command=self.text.yview)
+        self.text.see('end')
+        self.textframe.grid(row=8, column=0, padx=10 , columnspan=2)
 
         # Row 5
         self.bt_train = tk.Button(self.root, text='開始訓練', bg='red', fg='white', font=(self.font_name, 12), command=self.train)
@@ -76,8 +108,14 @@ class Application():
         self.bt_test = tk.Button(self.root, text='開始測試', bg='red', fg='white', font=(self.font_name, 12), command=self.test)
         self.bt_test.grid(row=9, column=1, padx=1)
 
+        # Row 5
+        self.lb_train_acc = tk.Label(self.root, text='訓練辨識率: N/A', font=(self.font_name, 10))
+        self.lb_train_acc.grid(row=10, column=0, padx=1)
+        self.lb_test_acc = tk.Label(self.root, text='測試辨識率: N/A', font=(self.font_name, 10))
+        self.lb_test_acc.grid(row=10, column=1, padx=1)
+
         # Row 6
-        self.lb_4 = tk.Label(self.root, text="繪圖演示" , font=(self.font_name, 9))#, width="30", height="5")
+        self.lb_4 = tk.Label(self.root, text="繪圖演示 (標準答案)" , font=(self.font_name, 10))#, width="30", height="5")
         self.lb_4.grid(row=1,column=2)
         self.frame = tk.Frame(self.root)
         self.canvas=tk.Canvas(self.frame) #創建一塊顯示圖形的畫布
@@ -129,24 +167,6 @@ class Application():
         #創建一副子圖
         self.fig1=plt.subplot(1,1,1)
 
-        # x=np.arange(-3,3,0.1)
-        # y1=np.sin(x)
-        # y2=np.cos(x)
-
-        # line1,=fig1.plot(x,y1,color='red',linewidth=3,linestyle='--')    #畫第一條線
-        # line2,=fig1.plot(x,y2,color='blue',linewidth=3,linestyle='-') 
-        # #plt.setp(line2,color='black',linewidth=8,linestyle='-',alpha=0.3)#華第二條線
-
-        # fig1.set_title("Picture 1",loc='center',pad=20,fontsize='xx-large',color='red')    #設置標題                                                        #確定圖例
-        # fig1.legend(['sin','cos'],loc='upper left',facecolor='green',frameon=True,shadow=True,framealpha=0.5,fontsize='xx-large')
-
-        # fig1.set_xlabel('y')                                                             #確定座標軸標題
-        # fig1.set_ylabel("x")
-        # fig1.set_yticks([-1,-1/2,0,1/2,1])                                                   #設置座標軸刻度
-        # fig1.grid(which='major',axis='x',color='gray', linestyle='-', linewidth=0.5)              #設置網格
-        
-
-
     def init(self):
         self.filename = ''      # 開啟文件路徑
         self.buffer = list()    # 暫存開啟文件內容 (經處理)
@@ -159,6 +179,7 @@ class Application():
         self.pred_class = None  #        
         self.n = 1              # 學習循環次數
         self.dim = 0            # 資料維度
+        self.mlp = None         # MLP 模型
         self.text.delete(1.0,'end')
         self.text.insert('1.0', "初始化，請開啟文件")
 
@@ -241,18 +262,41 @@ class Application():
             self.text.insert('insert','\n----訓練失敗----')
             return
         
-        nn = NeuralNetMLP( n_hidden=30,
-                 epochs=100, eta=0.001,
-                 shuffle=True, minibatch_size=1, seed=None, oputui= self.text)
-        nn.fit(X_train=self.X_train, y_train=self.y_train)
+        self.mlp = NeuralNetMLP( n_hidden=50,
+                 epochs=100, eta=0.3,
+                 shuffle=True, minibatch_size=1, seed=None, text_interface= self.text)
+        self.mlp.fit(X_train=self.X_train, y_train=self.y_train)
 
+        y_train_pred = self.mlp.predict(self.X_train)
+        self.text.insert('insert','\n----訓練成功----')
+
+        acc = (np.sum(self.y_train == y_train_pred).astype(np.float64) / self.X_train.shape[0])
+        print('\nTraining accuracy: %.2f%%'%(acc*100))
+        self.text.insert('insert','\n----訓練結果----')
+        self.text.insert('insert','\n訓練辨識率: %.2f%%'%(acc*100))
+        self.text.see('end')
+
+        self.lb_train_acc['text'] = '訓練辨識率: %.2f%%'%(acc*100)
 
     def test(self):
+        self.text.insert('insert','\n----開始測試----')
         self.bt_test['text'] = '再測試'
         if self.filename == '': 
             showinfo('錯誤','未打開文件')
             self.bt_test['text'] = '開始測試'
+            self.text.insert('insert','\n----測試失敗----')
+            return
 
+        y_test_pred = self.mlp.predict(self.X_test)
+        self.text.insert('insert','\n----測試成功----')
+
+        acc = (np.sum(self.y_test == y_test_pred).astype(np.float64) / self.X_test.shape[0])
+        print('Testing accuracy: %.2f%%'%(acc*100))
+        self.text.insert('insert','\n----測試結果----')
+        self.text.insert('insert','\n測試辨識率: %.2f%%'%(acc*100))
+        self.text.see('end')
+
+        self.lb_test_acc['text'] = '測試辨識率: %.2f%%'%(acc*100)
 
     # def create_button(self,txt):
     #     bt_1 = tk.Button(root, text=str(txt), bg='red', fg='white', font=('Arial', 12))
@@ -263,91 +307,7 @@ class Application():
     #     bt_1['activeforeground'] = 'yellow'
     #     bt_1.pack()
 
-class NeuralNetMLP(object):
-    """
 
-    參數:
-    -----------
-    n_hidden : int 
-        隱藏層的神經元數
-    epcohs : int
-        學習次數
-    eta : float
-        學習率
-    shuffle : bool
-        每個 epoch 中，是否將訓練資料打亂
-    minibatch_size : int
-        訓練資料的取樣數目
-    seed : int
-        隨機種子，用來產生初始 weights 和打亂的順序
-
-    """
-    def __init__(self, n_hidden=30,
-                 epochs=100, eta=0.001,
-                 shuffle=True, minibatch_size=1, seed=None, oputui = None):
-        self.random = np.random.RandomState(seed)
-        self.n_hidden = n_hidden
-        self.epochs = epochs
-        self.eta = eta
-        self.shuffle = shuffle
-        self.minibatch_size = minibatch_size
-        self.oputui = oputui
-
-    def _onehot(self, y, n_classes):
-        """將 Label 編碼成 one-hot 表示法
-
-        參數
-        ------------
-        y : array, shape = [樣本數]
-            期望值.
-
-        返回
-        -----------
-        onehot : array, shape = (樣本數, 標籤數)
-
-        """
-        onehot = np.zeros((n_classes, y.shape[0]))
-        for idx, val in enumerate(y.astype(int)):
-            print(idx, val)
-            onehot[val, idx] = 1.
-        return onehot.T
-
-    def _sigmoid(self, z):
-        """計算 logistic function (sigmoid)"""
-        return 1. / (1. + np.exp(-np.clip(z, -250, 250))) # 限制 z 最多在 -250~250 之間
-    
-    def _forward(self, X):
-        """計算 forward propagation 步驟"""
-
-        # step 1: net input of hidden layer
-        # [n_hidden, n_features] dot [n_features ,n_samples]
-        # -> [n_hidden , n_samples]
-        z_h = np.dot(self.w_h, X.T)
-
-        # step 2: activation of hidden layer
-        a_h = self._sigmoid(z_h)
-        
-        # step 3: net input of output layer
-        # [n_classlabels, n_hidden] dot [n_hidden , n_samples]
-        # -> [n_classlabels, n_samples]
-        z_out = np.dot(self.w_out, a_h)
-
-        # step 4: activation output layer
-        a_out = self._sigmoid(z_out)
-
-        return z_h, a_h, z_out, a_out
-
-    def _compute_cost(self, y_enc, output):
-
-        cost = np.sum((y_enc - output)**2)
-        return cost
-    
-    def fit(self, X_train, y_train):
-        n_output = np.unique(y_train).shape[0]  # number of class labels
-        n_features = X_train.shape[1]
-
-        self.oputui.insert('insert','\n神經輸出: '+str(n_output)+'\n輸入特徵: '+str(n_features))
-        print(n_output, n_features)
 
 app = Application()
 

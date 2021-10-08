@@ -1,1 +1,1 @@
-# MLPC
+# Multi-layer Perceptron Classifier
