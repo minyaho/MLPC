@@ -243,10 +243,12 @@ class Application():
         temp = self.temp_np
         temp_x = temp[:,:-1]
         temp_y = temp[:,-1:]
+        #print(temp)
         #temp_y = temp_y - np.min(temp_y)
         color_map = ['b.','g.','r.','c.','m.','y.','k.']
 
         pred_y = self.mlp.predict(temp_x)
+        #print(pred_y)
         #pred_y = pred_y - np.min(pred_y)
 
         for i,s in enumerate(temp_x):
@@ -382,8 +384,8 @@ class Application():
         #print(self.y_train)
         self.text.insert('insert','\n分類數: '+str(self.pred_class))
 
-        self.y_train = self.y_train.ravel()-np.min(self.y_train)
-        self.y_test = self.y_test.ravel()-np.min(self.y_test)
+        self.y_train = self.y_train.ravel()-np.min(self.temp_np[:,-1:])
+        self.y_test = self.y_test.ravel()-np.min(self.temp_np[:,-1:])
         # print(self.y_train.ravel()-np.min(self.y_train))
         # print(self.y_train.shape)
         # print(self._onehot(self.y_train.ravel()-np.min(self.y_train) ,self.pred_class))
