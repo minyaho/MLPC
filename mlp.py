@@ -18,23 +18,25 @@ class NeuralNetMLP(object):
         訓練資料的取樣數目
     seed : int
         隨機種子，用來產生初始 weights 和打亂的順序
-
+    text_output : None
+        是否設定文字資訊輸出，請自行改寫 self.text_output_func()
     """
     def __init__(self, n_hidden=30,
                  epochs=100, eta=0.1,
-                 shuffle=True, minibatch_size=1, seed=None, text_interface = None):
+                 shuffle=True, minibatch_size=1, seed=None, text_output = None, output_ui=None):
         self.random = np.random.RandomState(seed)
         self.n_hidden = n_hidden
         self.epochs = epochs
         self.eta = eta
         self.shuffle = shuffle
         self.minibatch_size = minibatch_size
-        self.text_interface = text_interface
+        self.text_output = text_output
+        self.output_ui = output_ui
 
-        if self.text_interface == None:
-            self.output_GUI_flag = False
+        if self.text_output == None:
+            self.out_Text_flag = False
         else:
-            self.output_GUI_flag = True
+            self.out_Text_flag = True
 
     def _onehot(self, y, n_classes):
         """將 Label 編碼成 one-hot 表示法
@@ -86,10 +88,17 @@ class NeuralNetMLP(object):
         return cost
     
     def fit(self, X_train, y_train):
-        n_output = np.unique(y_train).shape[0]  # number of class labels
+        n_output = np.unique(y_train).shape[0] + 1 # number of class labels 
+        # !!!!!
+        # (because of the dataset, we need to add 1 class to represent 0 bit.)
+        # if you think about that will influence the result, you can remove it, but you need check your dataset before you do.
+        # !!!!!
+
         n_features = X_train.shape[1]
 
-        self.text_interface.insert('insert','\n神經輸出: '+str(n_output)+'\n輸入特徵: '+str(n_features))
+        if self.out_Text_flag:
+            self.text_output_func('\n神經輸出: '+str(n_output-1)+'\n輸入特徵: '+str(n_features))
+        #self.text_output.insert('insert','\n神經輸出: '+str(n_output)+'\n輸入特徵: '+str(n_features))
 
         ########################
         # Weight initialization
@@ -101,19 +110,17 @@ class NeuralNetMLP(object):
         self.b_h = np.zeros(self.n_hidden)
         self.w_h = self.random.normal(loc=0.0, scale=0.1,size=(n_features, self.n_hidden))
 
-        if self.output_GUI_flag == True:
-            self.text_interface.insert('insert','\n第一層神經層鍵結值大小: '+str(self.w_h.shape))
-            self.text_interface.insert('insert','\n第一層神經層鍵結值: \n'+str(self.w_h))
-            self.text_interface.see('end')
+        # if self.out_Text_flag:
+        #     self.text_output_func('\n第一層神經層鍵結值大小: '+str(self.w_h.shape))
+        #     self.text_output_func('\n第一層神經層鍵結值: \n'+str(self.w_h))
 
         # weights for hidden -> output
         self.b_out = np.zeros(n_output)
         self.w_out = self.random.normal(loc=0.0, scale=0.1,size=(self.n_hidden, n_output))
 
-        if self.output_GUI_flag == True:
-            self.text_interface.insert('insert','\n輸出層神經層鍵結值大小: '+str(self.w_out.shape))
-            self.text_interface.insert('insert','\n輸出層神經層鍵結值: \n'+str(self.w_out))
-            self.text_interface.see('end')
+        # if self.out_Text_flag:
+        #     self.text_output_func('\n輸出層神經層鍵結值大小: '+str(self.w_out.shape))
+        #     self.text_output_func('\n輸出層神經層鍵結值: \n'+str(self.w_out))
 
         epoch_strlen = len(str(self.epochs))  # for progress formatting
         self.eval_ = {'cost': [], 'train_acc': []}
@@ -179,21 +186,26 @@ class NeuralNetMLP(object):
             train_acc = ((np.sum(y_train == y_train_pred)).astype(np.float64) /
                          X_train.shape[0])
 
-            sys.stderr.write('\r%0*d/%d | Cost: %.2f '
+            sys.stderr.write('\rEpoch:%0*d/%d | Cost: %.2f '
                              '| Train Acc.: %.2f%% ' %
                              (epoch_strlen, i+1, self.epochs, cost,
                               train_acc*100))
             sys.stderr.flush()
 
-            # if self.output_GUI_flag == True:
-            #     self.text_interface.insert('insert','\r%0*d/%d | Cost: %.2f '
-            #                  '| Train Acc.: %.2f%% ' %
-            #                  (epoch_strlen, i+1, self.epochs, cost,
-            #                   train_acc*100))
-            #     self.text_interface.see('end')
+            if self.out_Text_flag:
+                self.text_output_func('\nEpoch:\r%0*d/%d | Cost: %.2f '
+                             '| Train Acc.: %.2f%% ' %
+                             (epoch_strlen, i+1, self.epochs, cost,
+                              train_acc*100))
 
             self.eval_['cost'].append(cost)
             self.eval_['train_acc'].append(train_acc)
+
+            # if train_acc*100 > 80:  # ACC. limit
+            #     return
+            
+            # if cost < 30:           # cost limit
+            #     return
 
         return self
 
@@ -214,3 +226,8 @@ class NeuralNetMLP(object):
         z_h, a_h, z_out, a_out = self._forward(X)
         y_pred = np.argmax(z_out, axis=1)
         return y_pred
+    
+    def text_output_func(self, string):
+        # self.text_output.insert('insert',string)
+        # self.text_output.see('end')
+        return 
