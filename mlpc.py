@@ -1,13 +1,12 @@
 import tkinter as tk
 from tkinter.messagebox import showinfo
 from tkinter import filedialog as fd
-import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg,NavigationToolbar2Tk #NavigationToolbar2TkAg
 import numpy as np
 from mlp import NeuralNetMLP
-import threading
-import time
+#import threading
 
 plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
 plt.rcParams['axes.unicode_minus']=False
@@ -21,31 +20,31 @@ class MLP(NeuralNetMLP):
         #self.text_output.configure(state=tk.DISABLED)
         return 
 
-class MLPThread(threading.Thread):
-    def __init__(self, name, X_train, y_train, n_hidden, epochs, eta, shuffle, minibatch_size, seed, text_output= None):#, text_output):
+# class MLPThread(threading.Thread):
+#     def __init__(self, name, X_train, y_train, n_hidden, epochs, eta, shuffle, minibatch_size, seed, text_output= None):#, text_output):
 
-        self.random = seed
-        self.n_hidden = n_hidden
-        self.epochs = epochs
-        self.eta = eta
-        self.shuffle = shuffle
-        self.minibatch_size = minibatch_size
-        self.text_output = text_output
-        self.result = None
+#         self.random = seed
+#         self.n_hidden = n_hidden
+#         self.epochs = epochs
+#         self.eta = eta
+#         self.shuffle = shuffle
+#         self.minibatch_size = minibatch_size
+#         self.text_output = text_output
+#         self.result = None
 
-        self.X_train = X_train
-        self.y_train = y_train
+#         self.X_train = X_train
+#         self.y_train = y_train
 
-        self.mlp = MLP( n_hidden=self.n_hidden,
-                 epochs=self.epochs, eta=self.eta,
-                 shuffle=self.shuffle, minibatch_size=self.minibatch_size, seed=self.random, text_output= None)
-        super().__init__(name=name)
+#         self.mlp = MLP( n_hidden=self.n_hidden,
+#                  epochs=self.epochs, eta=self.eta,
+#                  shuffle=self.shuffle, minibatch_size=self.minibatch_size, seed=self.random, text_output= None)
+#         super().__init__(name=name)
 
-    def run(self):
-        self.result = self.mlp.fit(self.X_train, self.y_train)
+#     def run(self):
+#         self.result = self.mlp.fit(self.X_train, self.y_train)
 
-    def get_MLP(self):
-        return self.mlp
+#     def get_MLP(self):
+#         return self.mlp
 
 class Application():
 
@@ -64,6 +63,12 @@ class Application():
         self.dim = 0            # 資料維度
         self.mlp = None         # MLP 模型
         self.mlp_result = None  # MLP 模型訓練結果
+        self.X = None
+        self.X_normal = None
+        self.Y = None
+        self.normal_flag = False
+        self.cost = None
+        self.acc = None
 
         # 模型參數
         self.random = None
@@ -78,14 +83,14 @@ class Application():
 
         # Row 0
         self.lb_1 = tk.Label(self.root, text="Multi-layer Perceptron Classifier" , font=(self.font_name, 18))#, width="30", height="5")
-        self.lb_1.grid(row=0,column=0, columnspan=10, pady=5)
+        self.lb_1.grid(row=0,column=0, columnspan=2, pady=5)
 
         # Row 1
         self.frame_open = tk.Frame(self.root)
         self.lb_0 = tk.Label(self.frame_open, text="開啟文件" , font=(self.font_name, 10))#, width="30", height="5")
         self.lb_0.grid(row=0,column=0)
-        self.bt_1 = tk.Button(self.frame_open, text='開啟', font=(self.font_name, 10), command=self.open_file)
-        self.bt_1.grid(row=0, column=1)
+        self.bt_open = tk.Button(self.frame_open, text='開啟', font=(self.font_name, 10), command=self.open_file)
+        self.bt_open.grid(row=0, column=1)
         self.frame_open.grid(row=1, column=0)
 
         # self.lb_5 = tk.Label(self.root, text="測試文件" , font=(self.font_name, 9))#, width="30", height="5")
@@ -121,6 +126,11 @@ class Application():
         self.chk_shuffle = tk.Checkbutton(self.frame_train_set, text="是否打亂資料" , var=self.chkV_shuffle ,font=(self.font_name, 10))
         self.chk_shuffle.grid(row=4,column=0, columnspan=2)
 
+        self.chkV_normal = tk.BooleanVar()
+        self.chkV_normal.set(False)
+        self.chk_normal = tk.Checkbutton(self.frame_train_set, text="是否做資料正規化" , var=self.chkV_normal ,font=(self.font_name, 10))
+        self.chk_normal.grid(row=5,column=0, columnspan=2)
+
         self.frame_train_set.grid(row=2, column=0)
 
         # Row 3
@@ -143,7 +153,16 @@ class Application():
         self.chk_cost.grid(row=2,column=0)
         self.entry_cost = tk.Entry(self.frame_set ,width='10')
         self.entry_cost.grid(row=2, column=1)
+
+        self.chkV_acc = tk.BooleanVar()
+        self.chkV_acc.set(False)
+        self.chk_acc = tk.Checkbutton(self.frame_set, text="訓練辨識率限制" ,var=self.chkV_acc , font=(self.font_name, 10))
+        self.chk_acc.grid(row=3,column=0)
+        self.entry_acc = tk.Entry(self.frame_set ,width='10')
+        self.entry_acc.grid(row=3, column=1)
+
         self.frame_set.grid(row=2, column=1)
+
 
         #self.cbt_= tk.Checkbutton(self.frame_set)
         # self.optionList = ("學習循環次數", "誤差限制")
@@ -183,13 +202,13 @@ class Application():
         self.lb_test_acc.grid(row=10, column=1, padx=1)
 
         # Row 6
-        self.lb_plot = tk.Label(self.root, text="繪圖演示" , font=(self.font_name, 10))#, width="30", height="5")
-        self.lb_plot.grid(row=1,column=2)
+        self.lb_plot = tk.Label(self.root, text="繪圖演示" , font=(self.font_name, 12))#, width="30", height="5")
+        self.lb_plot.grid(row=0,column=2)
         self.frame_plot = tk.Frame(self.root)
         #self.canvas_true=tk.Canvas(self.frame_true) #創建一塊顯示圖形的畫布
         self.f, self.subf_true, self.subf_pred, self.subf_result = self.create_matplotlib() #返回matplotlib所畫圖形的figure對象
-        self.fcanvas_true, self.toolbar_true = self.create_form(self.frame_plot, self.f) #將figure顯示在tkinter窗體上面
-        self.frame_plot.grid(row=2, column=2, rowspan=10 , padx=5, pady=5)
+        self.fcanvas_plot, self.toolbar_plot = self.create_form(self.frame_plot, self.f) #將figure顯示在tkinter窗體上面
+        self.frame_plot.grid(row=1, column=2, rowspan=10 , padx=5, pady=5)
 
 
         # # Row 7
@@ -203,7 +222,7 @@ class Application():
         self.root.mainloop()
 
 
-    def set_true_matplotlib(self, fig):
+    def set_true_matplotlib(self):
 
         #創建繪圖對象f
         #self.f=plt.figure(num=2,figsize=(6,5),dpi=60,facecolor=None,edgecolor='black',frameon=True)
@@ -213,14 +232,29 @@ class Application():
 
         #fig.title.set_text('預期結果')
 
-        fig.set_ylabel('y')
-        fig.set_xlabel('x')
+        if self.dim > 3:
+            return
 
-        temp = self.temp_np
-        temp_x = temp[:,:-1]
-        temp_y = temp[:,-1:]
-        temp_y = temp_y - np.min(temp_y)
+        self.subf_true.remove()
+
+        if self.dim == 3:
+            self.subf_true = self.f.add_subplot(1, 3, 1, projection='3d')
+        elif self.dim == 2:
+            self.subf_true = self.f.add_subplot(1, 3, 1)
+        else:
+            return
+
+        self.subf_true.title.set_text('訓練結果')
+        self.subf_true.set_ylabel('y')
+        self.subf_true.set_xlabel('x')
+
+        # temp = self.temp_np
         color_map = ['b.','g.','r.','c.','m.','y.','k.']
+
+        # temp_x = temp[:,:-1]
+        # temp_y = temp[:,-1:]
+        # temp_y = temp_y - np.min(temp_y)
+
         # color_map2 = ["orange","pink","blue","brown","red","grey","yellow","green"]
 
         # class_ = dict()
@@ -232,36 +266,74 @@ class Application():
         #for i in set(self.temp_np[:,-1:].ravel().tolist()):
 
         # fig1.scatter(temp_x[:,:-1].ravel(),temp_x[:,-1:].ravel(), color_map=color_map2)
-        for i,s in enumerate(temp_x):
-            fig.plot(s[:-1],s[-1:], color_map[int(temp_y[i])], markersize=10)#, label='Case '+str(int(temp_y[i])),)
 
-    def set_pred_matplotlib(self, fig):
+        if self.dim == 3:
+            self.subf_true.set_zlabel('z')
+            for i,s in enumerate(self.X_normal):
+                self.subf_true.plot(s[:1],s[1:-1],s[-1:], color_map[int(self.y[i])], markersize=3)#, label='Case '+str(int(temp_y[i])),)
+        else:
+            for i,s in enumerate(self.X_normal):
+                self.subf_true.plot(s[:-1],s[-1:], color_map[int(self.y[i])], markersize=3)#, label='Case '+str(int(temp_y[i])),)
+        
+        self.toolbar_plot.update()
+        self.fcanvas_plot.draw()
 
-        fig.set_ylabel('y')
-        fig.set_xlabel('x')
+    def set_pred_matplotlib(self):
+        
+        if self.dim > 3:
+            return
 
-        temp = self.temp_np
-        temp_x = temp[:,:-1]
-        temp_y = temp[:,-1:]
-        #print(temp)
-        #temp_y = temp_y - np.min(temp_y)
+        self.subf_pred.remove()
+
+        if self.dim == 3:
+            self.subf_pred = self.f.add_subplot(1, 3, 2, projection='3d')
+        elif self.dim == 2:
+            self.subf_pred = self.f.add_subplot(1, 3, 2)
+
+        self.subf_pred.title.set_text('訓練結果')
+        self.subf_pred.set_ylabel('y')
+        self.subf_pred.set_xlabel('x')
+
+        # temp = self.temp_np
         color_map = ['b.','g.','r.','c.','m.','y.','k.']
 
-        pred_y = self.mlp.predict(temp_x)
+        # temp_x = temp[:,:-1]
+        # temp_y = temp[:,-1:]
+        #print(temp)
+        #temp_y = temp_y - np.min(temp_y)
+
+        pred_y = self.mlp.predict(self.X_normal)
         #print(pred_y)
         #pred_y = pred_y - np.min(pred_y)
 
-        for i,s in enumerate(temp_x):
-            fig.plot(s[:-1],s[-1:], color_map[int(pred_y[i])], markersize=10)#, label='Case '+str(int(temp_y[i])),)
+        if self.dim == 3:
+            self.subf_pred.set_zlabel('z')
+            for i,s in enumerate(self.X):
+                self.subf_pred.plot(s[:1],s[1:-1],s[-1:], color_map[int(pred_y[i])], markersize=3)#, label='Case '+str(int(temp_y[i])),)
+        else:
+            for i,s in enumerate(self.X):
+                self.subf_pred.plot(s[:-1],s[-1:], color_map[int(pred_y[i])], markersize=3)#, label='Case '+str(int(temp_y[i])),)
+                
+        self.toolbar_plot.update()
+        self.fcanvas_plot.draw()
 
-    def set_result_matplotlib(self, fig):
+    def set_result_matplotlib(self):
+
+        self.subf_result.remove()
+
+        self.subf_result = self.f.add_subplot(1, 3, 3)
+        self.subf_result.title.set_text('訓練紀錄')
+
         train_acc_100 = [i*100 for i in self.mlp.eval_['train_acc']]
-        fig.plot(range(len(self.mlp.eval_['cost'])), self.mlp.eval_['cost'], label='cost')
-        fig.plot(range(len(train_acc_100)), train_acc_100, label='training acc. (100%)')
+        self.subf_result.plot(range(len(self.mlp.eval_['cost'])), self.mlp.eval_['cost'], label='cost')
+        self.subf_result.plot(range(len(train_acc_100)), train_acc_100, label='training acc. (100%)')
 
-        fig.set_ylabel('y')
-        fig.set_xlabel('x')
-        fig.legend()
+        self.subf_result.set_ylabel('y')
+        self.subf_result.set_xlabel('x')
+        self.subf_result.legend()
+
+        self.toolbar_plot.update()
+        self.fcanvas_plot.draw()
         
         # fig.plot(range(self.epochs), self.mlp.eval_['train_acc'], label='training')
         # fig.set_ylabel('Accuracy')
@@ -270,7 +342,7 @@ class Application():
 
     def create_form(self, frame, figure):
         #把繪製的圖形顯示到tkinter窗口上
-        fcanvas=FigureCanvasTkAgg(figure,frame)
+        fcanvas=FigureCanvasTkAgg(figure, frame)
         fcanvas.draw()  #以前的版本使用show()方法，matplotlib 2.2之後不再推薦show（）用draw代替，但是用show不會報錯，會顯示警告
         fcanvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
@@ -283,13 +355,14 @@ class Application():
 
     def create_matplotlib(self):
         #創建繪圖對象f
-        f = plt.figure(num=2,figsize=(12,4),dpi=80,facecolor=None,edgecolor='black',frameon=True)
+        f = Figure(figsize=(12,4), dpi=80) #,facecolor=None,edgecolor='black',frameon=True)
+        #f = Figure(figsize=(9,3), dpi=100) #,facecolor=None,edgecolor='black',frameon=True)
         #創建一副子圖
-        subf_1 = plt.subplot(1,3,1)
+        subf_1 = f.add_subplot(1,3,1)
         subf_1.title.set_text('預期結果')
-        subf_2 = plt.subplot(1,3,2)
+        subf_2 = f.add_subplot(1,3,2)
         subf_2.title.set_text('訓練結果')
-        subf_3 = plt.subplot(1,3,3)
+        subf_3 = f.add_subplot(1,3,3)
         subf_3.title.set_text('訓練紀錄')
         return f, subf_1, subf_2, subf_3
 
@@ -305,7 +378,13 @@ class Application():
         self.dim = 0            # 資料維度
         self.mlp = None         # MLP 模型
         self.mlp_result = None  # MLP 模型訓練結果
-
+        self.X = None
+        self.X_normal = None
+        self.Y = None
+        self.normal_flag = False
+        self.cost = None
+        self.acc = None
+        
         # 模型參數
         self.random = None
         self.n_hidden = None
@@ -318,14 +397,30 @@ class Application():
         self.text.insert('1.0', "初始化，請開啟文件")
 
         # 清除畫布
-        #plt.clf()
-        self.subf_true.clear()
-        self.subf_true.title.set_text('預期結果')
-        self.subf_pred.clear()
-        self.subf_pred.title.set_text('訓練結果')
-        self.subf_result.clear()
-        self.subf_result.title.set_text('訓練紀錄')
-        self.fcanvas_true.draw()
+        # #plt.close(self.f)
+        # #self.f = Figure(figsize=(12,4),dpi=80)
+        # #self.subf_true.clear()
+        # self.subf_true.remove()
+        # self.subf_true = self.f.add_subplot(1,3,1)
+        # self.subf_true.title.set_text('預期結果')
+        # self.subf_pred.remove()
+        # self.subf_pred = self.f.add_subplot(1,3,2)
+        # self.subf_pred.title.set_text('訓練結果')
+        # self.subf_result.remove()
+        # self.subf_result = self.f.add_subplot(1,3,3)
+        # self.subf_result.title.set_text('訓練紀錄')
+        # # self.fcanvas_plot.figure = self.f
+        # # self.toolbar_plot.canvas = self.fcanvas_plot
+        # # self.toolbar_plot.figure = self.f
+        # self.toolbar_plot.update()
+        # self.fcanvas_plot.draw()
+
+        # 重置畫布 Frame
+        self.frame_plot.destroy()
+        self.frame_plot = tk.Frame(self.root)
+        self.f, self.subf_true, self.subf_pred, self.subf_result = self.create_matplotlib() #返回matplotlib所畫圖形的figure對象
+        self.fcanvas_plot, self.toolbar_plot = self.create_form(self.frame_plot, self.f) #將figure顯示在tkinter窗體上面
+        self.frame_plot.grid(row=1, column=2, rowspan=10 , padx=5, pady=5)
 
         self.bt_train['text'] = '開始訓練'
         self.bt_test['text'] = '開始測試'
@@ -349,22 +444,12 @@ class Application():
 
         self.dim = len(self.buffer[0]) - 1
         self.text.insert('insert','\n資料維度: '+str(self.dim))
+
+        if self.dim > 3:
+            showinfo('注意','目前的資料集維度 > 3，將無法畫圖')
         #print('訓練的資料維度:',self.dim)
 
-        self.temp_np = np.array(self.buffer)
-        #self.temp_np = temp_np
-        np.random.shuffle(self.temp_np) # 打亂
-        data_size = len(self.buffer)
-        self.text.insert('insert','\n資料大小: '+str(data_size))
-
-        train_size = round(data_size*(2.0/3.0))
-        test_size = data_size - train_size
-        self.X_train = self.temp_np[:train_size,:-1]
-        self.X_test = self.temp_np[train_size:,:-1]
-        self.y_train = self.temp_np[:train_size,-1:]
-        self.y_test = self.temp_np[train_size:,-1:]
-        self.text.insert('insert','\n訓練集大小: '+str(self.X_train.shape))
-        self.text.insert('insert','\n測試集大小: '+str(self.X_test.shape))
+        self.data_pre_processing(True)
 
         # # 初始化參數 (附上 bias)
         # self.weight = np.random.randn(1,self.dim)
@@ -380,26 +465,61 @@ class Application():
         # print(int(np.max(self.temp_np[:,-1:])))
         # print(np.arange(0,int(np.max(self.temp_np[:,-1:]))))
         # print(np.unique(np.arange(0,np.unique(self.temp_np[:,-1:]).shape[0])))
-        self.pred_class = np.unique(self.temp_np[:,-1:]).shape[0]
-        #print(self.y_train)
-        self.text.insert('insert','\n分類數: '+str(self.pred_class))
 
-        self.y_train = self.y_train.ravel()-np.min(self.temp_np[:,-1:])
-        self.y_test = self.y_test.ravel()-np.min(self.temp_np[:,-1:])
+        # self.y_train = self.y_train.ravel()-np.min(self.temp_np[:,-1:])
+        # self.y_test = self.y_test.ravel()-np.min(self.temp_np[:,-1:])
         # print(self.y_train.ravel()-np.min(self.y_train))
         # print(self.y_train.shape)
         # print(self._onehot(self.y_train.ravel()-np.min(self.y_train) ,self.pred_class))
 
-        if self.dim == 2:
-            self.set_true_matplotlib(self.subf_true)
-            self.fcanvas_true.draw()
+        #if self.dim == 2:
+        self.set_true_matplotlib()
 
     def popup_hello(self):
         showinfo("Hello", "Hello Tk!")
     
+    def data_pre_processing(self, info_output):
+        # 處理資料
+        self.temp_np = np.array(self.buffer)
+        #self.temp_np = temp_np
+        np.random.shuffle(self.temp_np) # 打亂
+        data_size = len(self.buffer)
+        self.text.insert('insert','\n資料大小: '+str(data_size))
+
+        train_size = round(data_size*(2.0/3.0))
+        test_size = data_size - train_size
+
+        self.X = self.temp_np[:,:-1]
+        self.y = self.temp_np[:,-1:]
+        self.y = self.y.ravel()-np.min(self.y)
+
+        if self.normal_flag:
+            self.X_normal = np.array(self.X)
+            for i in range(self.X.shape[1]):
+                self.X_normal[:,i:i+1] = self.X[:,i:i+1]/np.linalg.norm(self.X[:,i:i+1])
+        else:
+            self.X_normal = self.X
+
+        self.X_train = self.X_normal[:train_size]
+        self.X_test = self.X_normal[train_size:]
+        self.y_train = self.y[:train_size]
+        self.y_test = self.y[train_size:]
+
+        if info_output:
+            self.text.insert('insert','\n訓練集大小: '+str(self.X_train.shape))
+            self.text.insert('insert','\n測試集大小: '+str(self.X_test.shape))
+
+            self.pred_class = np.unique(self.temp_np[:,-1:]).shape[0]
+            #print(self.y_train)
+            self.text.insert('insert','\n分類數: '+str(self.pred_class))
+
     def train(self):
+        
+        # 關閉按鈕
+        self.bt_open['state'] = tk.DISABLED
         self.bt_train['state'] = tk.DISABLED
-        self.text.insert('insert','\n----開始訓練----')
+
+        self.text.insert('insert','\n\n----開始訓練----')
         if self.filename == '': 
             showinfo('錯誤','未打開文件或開啟失敗')
             self.bt_train['state'] = tk.NORMAL
@@ -412,6 +532,7 @@ class Application():
             self.minibatch_size = int(self.entry_mbatch.get())
             self.n_hidden = int(self.entry_hidden.get())
             self.shuffle = self.chkV_shuffle.get()
+            self.normal_flag = self.chkV_normal.get()
             if (self.eta <= 0.0) or (self.minibatch_size  <= 0 or (self.n_hidden <= 0)):
                 raise ValueError('ValueError: ','eta ,minibatch_size or n_hidden 參數錯誤')
         except Exception as e:
@@ -424,15 +545,33 @@ class Application():
         # 參數讀取 (收斂條件)
         try:
             self.epochs = int(self.entry_epoch.get())
-            if (self.epochs < 1):
-                raise ValueError('ValueError: ','eta ,minibatch_size or n_hidden 參數錯誤')
+
+            if self.chkV_cost.get():
+                self.cost = float(self.entry_cost.get())
+                if (self.epochs < 1):
+                    raise ValueError('ValueError: ','學習循環次數 參數錯誤')
+            else:
+                self.cost = None
+
+            if self.chkV_acc.get():
+                self.acc = float(self.entry_acc.get())
+                if (self.acc < 0.0) or (self.acc > 1.0):
+                    raise ValueError('ValueError: ','訓練辨識率限制 參數錯誤')
+            else:
+                self.acc = None
 
         except Exception as e:
-            showinfo('錯誤','收斂條件設定錯誤，\n請注意輸入格式！\n\n說明:\n\n  學習循環次數應大於 1')
+            showinfo('錯誤','收斂條件設定錯誤，\n請注意輸入格式！\n\n說明:\n\n  學習循環次數應大於 1 且為整數\n\n  (選)成本限制應為數值\n\n (選)訓練辨識率限制為 0 ~ 1 之間的浮點數')
             self.bt_train['state'] = tk.NORMAL
             self.text.insert('insert','\n----訓練失敗----')
             print('[!]錯誤訊息: ',e)
             return   
+        
+        if self.normal_flag:
+            self.text2out('\n偵測到正規化勾選，重新整理資料...')
+            self.data_pre_processing(True)
+        else:
+            self.data_pre_processing(False)
 
         self.text2out('\n學習率: '+str(self.eta))
         self.text2out('\n最小批次數: '+str(self.minibatch_size))
@@ -440,11 +579,13 @@ class Application():
         self.text2out('\n打亂資料: '+str(self.shuffle))
         self.text2out('\n學習循環次數: '+str(self.epochs))
 
+        # 建立模型
+        self.text2out('\n****模型輸出****')
         self.mlp = MLP( n_hidden=self.n_hidden,
                  epochs=self.epochs, eta=self.eta,
-                 shuffle=self.shuffle, minibatch_size=self.minibatch_size, seed=None, text_output= self.text, output_ui=self.root)
+                 shuffle=self.shuffle, minibatch_size=self.minibatch_size, seed=None, text_output= self.text, output_ui=self.root, cost_limit=self.cost, acc_limit=self.acc)
         self.mlp_result = self.mlp.fit(X_train=self.X_train, y_train=self.y_train)
-
+        self.text2out('\n****輸出結束****')
         # thread = MLPThread('MLP_thread', X_train=self.X_train, y_train=self.y_train, n_hidden=self.n_hidden,
         #           epochs=100, eta=self.eta,
         #           shuffle=self.shuffle, minibatch_size=self.minibatch_size, seed=None, text_output= self.text)
@@ -464,17 +605,11 @@ class Application():
         self.lb_train_acc['text'] = '訓練辨識率: %.2f%%'%(acc*100)
 
         # 結束
-        if self.dim == 2:
-            self.subf_pred.clear()
-            self.subf_pred.title.set_text('訓練結果')
-            self.set_pred_matplotlib(self.subf_pred)
-            self.fcanvas_true.draw()
 
-        self.subf_result.clear()
-        self.subf_result.title.set_text('訓練紀錄')
-        self.set_result_matplotlib(self.subf_result)
-        self.fcanvas_true.draw()
+        self.set_pred_matplotlib()      # 畫訓練結果圖
+        self.set_result_matplotlib()    # 畫訓練記錄圖
 
+        self.bt_open['state'] = tk.NORMAL
         self.bt_train['state'] = tk.NORMAL
         self.bt_train['text'] = '重新訓練'
 
@@ -482,8 +617,12 @@ class Application():
 
 
     def test(self):
+
+        # 關閉按鈕
+        self.bt_open['state'] = tk.DISABLED
         self.bt_test['state'] = tk.DISABLED
-        self.text2out('\n----開始測試----')
+
+        self.text2out('\n\n----開始測試----')
         if self.filename == '': 
             showinfo('錯誤','未打開文件')
             self.text2out('\n----測試失敗----')
@@ -508,15 +647,9 @@ class Application():
         self.lb_test_acc['text'] = '測試辨識率: %.2f%%'%(acc*100)
 
         # 結束
+        self.bt_open['state'] = tk.NORMAL
         self.bt_test['state'] = tk.NORMAL
         self.bt_test['text'] = '重新測試'
-
-    def isfloat(self, value):
-        try:
-            float(value)
-            return True
-        except ValueError:
-            return False
 
     def text2out(self, string):
         #self.text.configure(state=tk.NORMAL)

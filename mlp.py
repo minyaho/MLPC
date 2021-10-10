@@ -23,7 +23,7 @@ class NeuralNetMLP(object):
     """
     def __init__(self, n_hidden=30,
                  epochs=100, eta=0.1,
-                 shuffle=True, minibatch_size=1, seed=None, text_output = None, output_ui=None):
+                 shuffle=True, minibatch_size=1, seed=None, text_output = None, output_ui=None, cost_limit=None, acc_limit=None):
         self.random = np.random.RandomState(seed)
         self.n_hidden = n_hidden
         self.epochs = epochs
@@ -32,6 +32,8 @@ class NeuralNetMLP(object):
         self.minibatch_size = minibatch_size
         self.text_output = text_output
         self.output_ui = output_ui
+        self.cost_limit = cost_limit
+        self.acc_limit = acc_limit
 
         if self.text_output == None:
             self.out_Text_flag = False
@@ -201,11 +203,12 @@ class NeuralNetMLP(object):
             self.eval_['cost'].append(cost)
             self.eval_['train_acc'].append(train_acc)
 
-            # if train_acc*100 > 80:  # ACC. limit
-            #     return
-            
-            # if cost < 30:           # cost limit
-            #     return
+            if self.acc_limit != None: 
+                if train_acc >= self.acc_limit:  # ACC. limit
+                    return
+            if self.cost_limit != None: 
+                if cost <= self.cost_limit:      # cost limit
+                    return
 
         return self
 
