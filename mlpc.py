@@ -69,6 +69,7 @@ class Application():
         self.normal_flag = False
         self.cost = None
         self.acc = None
+        self.cost_trigger = None
 
         # 模型參數
         self.random = None
@@ -161,6 +162,13 @@ class Application():
         self.entry_acc = tk.Entry(self.frame_set ,width='10')
         self.entry_acc.grid(row=3, column=1)
 
+        self.chkV_cost_t = tk.BooleanVar()
+        self.chkV_cost_t.set(False)
+        self.chk_cost_t = tk.Checkbutton(self.frame_set, text="成本不可大於先前次數" ,var=self.chkV_cost_t , font=(self.font_name, 10))
+        self.chk_cost_t.grid(row=4,column=0)
+        self.entry_cost_t = tk.Entry(self.frame_set ,width='10')
+        self.entry_cost_t.grid(row=4, column=1)
+
         self.frame_set.grid(row=2, column=1)
 
 
@@ -244,7 +252,7 @@ class Application():
         else:
             return
 
-        self.subf_true.title.set_text('訓練結果')
+        self.subf_true.title.set_text('預期結果')
         self.subf_true.set_ylabel('y')
         self.subf_true.set_xlabel('x')
 
@@ -384,6 +392,7 @@ class Application():
         self.normal_flag = False
         self.cost = None
         self.acc = None
+        self.cost_trigger = None
         
         # 模型參數
         self.random = None
@@ -538,7 +547,8 @@ class Application():
         except Exception as e:
             showinfo('錯誤','訓練參數設定錯誤，\n請注意輸入格式！\n\n說明:\n\n  學習率環次數應大於 0.0\n  最小批次數應大於等於 1 且為整數\n  隱藏層神經元數應大於 1 且為整數')
             self.bt_train['state'] = tk.NORMAL
-            self.text.insert('insert','\n----訓練失敗----')
+            self.text2out('\n----訓練失敗----')
+            self.bt_open['state'] = tk.NORMAL
             print('[!]錯誤訊息: ',e)
             return
 
@@ -560,10 +570,18 @@ class Application():
             else:
                 self.acc = None
 
+            if self.chkV_cost_t.get():
+                self.cost_trigger = int(self.entry_cost_t.get())
+                if (self.cost_trigger < 1):
+                    raise ValueError('ValueError: ','成本不可大於先前次數 參數錯誤')
+            else:
+                self.acc = None
+
         except Exception as e:
-            showinfo('錯誤','收斂條件設定錯誤，\n請注意輸入格式！\n\n說明:\n\n  學習循環次數應大於 1 且為整數\n\n  (選)成本限制應為數值\n\n (選)訓練辨識率限制為 0 ~ 1 之間的浮點數')
+            showinfo('錯誤','收斂條件設定錯誤，\n請注意輸入格式！\n\n說明:\n\n  學習循環次數應大於 1 且為整數\n\n  (選)成本限制應為數值\n\n (選)訓練辨識率限制為 0 ~ 1 之間的浮點數\n\n  (選)成本不可大於先前次數必為整數且大於等於1')
             self.bt_train['state'] = tk.NORMAL
-            self.text.insert('insert','\n----訓練失敗----')
+            self.text2out('\n----訓練失敗----')
+            self.bt_open['state'] = tk.NORMAL
             print('[!]錯誤訊息: ',e)
             return   
         
@@ -583,7 +601,9 @@ class Application():
         self.text2out('\n****模型輸出****')
         self.mlp = MLP( n_hidden=self.n_hidden,
                  epochs=self.epochs, eta=self.eta,
-                 shuffle=self.shuffle, minibatch_size=self.minibatch_size, seed=None, text_output= self.text, output_ui=self.root, cost_limit=self.cost, acc_limit=self.acc)
+                 shuffle=self.shuffle, minibatch_size=self.minibatch_size, seed=None, 
+                 text_output= self.text, output_ui=self.root, cost_limit=self.cost, acc_limit=self.acc,
+                 cost_trigger=self.cost_trigger)
         self.mlp_result = self.mlp.fit(X_train=self.X_train, y_train=self.y_train)
         self.text2out('\n****輸出結束****')
         # thread = MLPThread('MLP_thread', X_train=self.X_train, y_train=self.y_train, n_hidden=self.n_hidden,
@@ -598,17 +618,28 @@ class Application():
 
         acc = (np.sum(self.y_train == y_train_pred).astype(np.float64) / self.X_train.shape[0])
         print('\nTraining accuracy: %.2f%%'%(acc*100))
-        self.text.insert('insert','\n----訓練結果----')
-        self.text.insert('insert','\n訓練辨識率: %.2f%%'%(acc*100))
-        self.text.see('end')
+        self.text2out('\n----訓練結果----')
+        self.text2out('\n訓練辨識率: %.2f%%'%(acc*100))
 
-        self.lb_train_acc['text'] = '訓練辨識率: %.2f%%'%(acc*100)
+        self.text2out('\n模型內部參數:')
+        self.text2out('\ninput layer ---------> hidden layer')
+        self.text2out('\n鍵結值大小: '+str(self.mlp.w_h.shape))
+        self.text2out('\n鍵結值內容: \n'+str(self.mlp.w_h))
+        self.text2out('\n閥值大小: '+str(self.mlp.b_h.shape))
+        self.text2out('\n閥值內容: \n'+str(self.mlp.b_h))
+
+        self.text2out('\nhidden layer ---------> output layer')
+        self.text2out('\n鍵結值大小: '+str(self.mlp.w_out.shape))
+        self.text2out('\n鍵結值內容: \n'+str(self.mlp.w_out))
+        self.text2out('\n閥值大小: '+str(self.mlp.b_out.shape))
+        self.text2out('\n閥值內容: \n'+str(self.mlp.b_out))
 
         # 結束
 
         self.set_pred_matplotlib()      # 畫訓練結果圖
         self.set_result_matplotlib()    # 畫訓練記錄圖
 
+        self.lb_train_acc['text'] = '訓練辨識率: %.2f%%'%(acc*100)
         self.bt_open['state'] = tk.NORMAL
         self.bt_train['state'] = tk.NORMAL
         self.bt_train['text'] = '重新訓練'

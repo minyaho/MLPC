@@ -23,7 +23,7 @@ class NeuralNetMLP(object):
     """
     def __init__(self, n_hidden=30,
                  epochs=100, eta=0.1,
-                 shuffle=True, minibatch_size=1, seed=None, text_output = None, output_ui=None, cost_limit=None, acc_limit=None):
+                 shuffle=True, minibatch_size=1, seed=None, text_output = None, output_ui=None, cost_limit=None, acc_limit=None, cost_trigger=None):
         self.random = np.random.RandomState(seed)
         self.n_hidden = n_hidden
         self.epochs = epochs
@@ -34,6 +34,8 @@ class NeuralNetMLP(object):
         self.output_ui = output_ui
         self.cost_limit = cost_limit
         self.acc_limit = acc_limit
+        self.cost_trigger = cost_trigger
+        self.cost_count = 0
 
         if self.text_output == None:
             self.out_Text_flag = False
@@ -188,6 +190,13 @@ class NeuralNetMLP(object):
             train_acc = ((np.sum(y_train == y_train_pred)).astype(np.float64) /
                          X_train.shape[0])
 
+            self.eval_['cost'].append(cost)
+            self.eval_['train_acc'].append(train_acc)
+
+            if  i != 0 and self.cost_trigger != None:
+                if self.eval_['cost'][-2] < cost:
+                    self.cost_count += 1
+
             sys.stderr.write('\rEpoch:%0*d/%d | Cost: %.2f '
                              '| Train Acc.: %.2f%% ' %
                              (epoch_strlen, i+1, self.epochs, cost,
@@ -195,19 +204,27 @@ class NeuralNetMLP(object):
             sys.stderr.flush()
 
             if self.out_Text_flag:
-                self.text_output_func('\nEpoch:\r%0*d/%d | Cost: %.2f '
+                if self.cost_trigger != None:
+                    self.text_output_func('\nEpoch:\r%0*d/%d | Cost: %.2f '
+                             '| Train Acc.: %.2f%% | Cost Trigger: %d' %
+                             (epoch_strlen, i+1, self.epochs, cost,
+                              train_acc*100, self.cost_count))
+                else:
+                    self.text_output_func('\nEpoch:\r%0*d/%d | Cost: %.2f '
                              '| Train Acc.: %.2f%% ' %
                              (epoch_strlen, i+1, self.epochs, cost,
                               train_acc*100))
-
-            self.eval_['cost'].append(cost)
-            self.eval_['train_acc'].append(train_acc)
 
             if self.acc_limit != None: 
                 if train_acc >= self.acc_limit:  # ACC. limit
                     return
             if self.cost_limit != None: 
                 if cost <= self.cost_limit:      # cost limit
+                    return
+
+            # early stop
+            if  i != 0 and self.cost_trigger != None:
+                if self.cost_count >= self.cost_trigger:
                     return
 
         return self
