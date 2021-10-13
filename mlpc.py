@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg,NavigationToolbar2Tk #NavigationToolbar2TkAg
 import numpy as np
+from matplotlib.colors import ListedColormap
 from mlp import NeuralNetMLP
 #import threading
 
@@ -259,6 +260,9 @@ class Application():
         # temp = self.temp_np
         color_map = ['b.','g.','r.','c.','m.','y.','k.']
 
+        colors = ('red', 'blue', 'green', 'gray', 'cyan')
+        cmap = ListedColormap(colors[:len(np.unique(self.y))])
+
         # temp_x = temp[:,:-1]
         # temp_y = temp[:,-1:]
         # temp_y = temp_y - np.min(temp_y)
@@ -280,9 +284,10 @@ class Application():
             for i,s in enumerate(self.X_normal):
                 self.subf_true.plot(s[:1],s[1:-1],s[-1:], color_map[int(self.y[i])], markersize=3)#, label='Case '+str(int(temp_y[i])),)
         else:
-            for i,s in enumerate(self.X_normal):
-                self.subf_true.plot(s[:-1],s[-1:], color_map[int(self.y[i])], markersize=3)#, label='Case '+str(int(temp_y[i])),)
-        
+            # for i,s in enumerate(self.X_normal):
+            #     self.subf_true.plot(s[:-1],s[-1:], color_map[int(self.y[i])], markersize=3)#, label='Case '+str(int(temp_y[i])),)
+            self.subf_true.scatter(self.X[:,0],self.X[:,1], c=self.y, s=2, cmap=cmap)
+
         self.toolbar_plot.update()
         self.fcanvas_plot.draw()
 
@@ -297,6 +302,12 @@ class Application():
             self.subf_pred = self.f.add_subplot(1, 3, 2, projection='3d')
         elif self.dim == 2:
             self.subf_pred = self.f.add_subplot(1, 3, 2)
+            x0_min, x0_max = self.X_normal[:, 0].min() - 1, self.X_normal[:, 0].max() + 1
+            x1_min, x1_max = self.X_normal[:, 1].min() - 1, self.X_normal[:, 1].max() + 1
+            xx, yy = np.meshgrid(np.arange(x0_min, x0_max, 0.1), np.arange(x1_min, x1_max, 0.1))
+            pred_ALL = self.mlp.predict(np.c_[xx.ravel(),yy.ravel()]).reshape(xx.shape)
+            print(pred_ALL.shape)
+            print(xx, yy)
 
         self.subf_pred.title.set_text('訓練結果')
         self.subf_pred.set_ylabel('y')
@@ -304,13 +315,17 @@ class Application():
 
         # temp = self.temp_np
         color_map = ['b.','g.','r.','c.','m.','y.','k.']
+        colors = ListedColormap(['yello','blue','green','red'])
 
         # temp_x = temp[:,:-1]
-        # temp_y = temp[:,-1:]
+        # temp_y = temp[:,-1:] 
         #print(temp)
         #temp_y = temp_y - np.min(temp_y)
 
         pred_y = self.mlp.predict(self.X_normal)
+        colors = ('red', 'blue', 'green', 'gray', 'cyan')
+        cmap = ListedColormap(colors[:len(np.unique(pred_y))])
+
         #print(pred_y)
         #pred_y = pred_y - np.min(pred_y)
 
@@ -319,11 +334,13 @@ class Application():
             for i,s in enumerate(self.X):
                 self.subf_pred.plot(s[:1],s[1:-1],s[-1:], color_map[int(pred_y[i])], markersize=3)#, label='Case '+str(int(temp_y[i])),)
         else:
-            for i,s in enumerate(self.X):
-                self.subf_pred.plot(s[:-1],s[-1:], color_map[int(pred_y[i])], markersize=3)#, label='Case '+str(int(temp_y[i])),)
+            #for i,s in enumerate(self.X):
+                #self.subf_pred.plot(s[:-1],s[-1:], color_map[int(pred_y[i])], markersize=3)#, label='Case '+str(int(temp_y[i])),)
+            self.subf_pred.scatter(self.X[:,0],self.X[:,1], c=pred_y, s=2, cmap=cmap)
+            self.subf_pred.contourf(xx, yy, pred_ALL, cmap=cmap, alpha=0.4)#, cmap=colors)
                 
-        self.toolbar_plot.update()
-        self.fcanvas_plot.draw()
+        #self.toolbar_plot.update()
+        #self.fcanvas_plot.draw()
 
     def set_result_matplotlib(self):
 
