@@ -243,11 +243,11 @@ class NeuralNetMLP(object):
 
                 # 計算輸出層的修正變數 detla 
                 # [n_samples, n_classlabels] 
-                detla_o = e_out * sigmoid_derivative_o
+                delta_o = e_out * sigmoid_derivative_o
 
                 # 計算隱藏層的修正變數 detla
                 # [n_samples, n_hidden] = [n_samples, n_hidden] * [n_samples, n_classlabels]  * [n_hidden, n_classlabels]
-                delta_h = sigmoid_derivative_h * np.dot(detla_o, self.w_out.T)
+                delta_h = sigmoid_derivative_h * np.dot(delta_o, self.w_out.T)
 
                 # 修正隱藏層鍵結值與閥值
                 # [n_samples, n_hidden] = [n_samples, n_hidden] - eta * [n_samples, n_features].T dot [n_samples, n_hidden]
@@ -256,7 +256,7 @@ class NeuralNetMLP(object):
                 
                 # 修正輸出層鍵結值與閥值
                 # [n_hidden, n_classlabels] = [n_hidden, n_classlabels] - eta * [n_samples, n_hidden].T dot [n_samples, n_classlabels]  
-                self.w_out -= self.eta * np.dot(a_h.T, detla_o)
+                self.w_out -= self.eta * np.dot(a_h.T, delta_o)
                 self.b_out -= self.eta * np.sum(e_out, axis=0)
 
             #############
@@ -352,7 +352,5 @@ class NeuralNetMLP(object):
         string : string
             輸出字串
         """
-
         # 請自行改寫本處
-        
         return 
