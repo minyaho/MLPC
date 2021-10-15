@@ -57,6 +57,7 @@ class Application():
         self.minibatch_size = None  # 最小批次數
 
         self.root = tk.Tk()         # 生成 tk()
+        self.root.title('Multi-layer Perceptron Classifier by minyaho')
 
         # 介面設置
         # Row 0
