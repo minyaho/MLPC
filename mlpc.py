@@ -7,7 +7,6 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg,NavigationToolba
 import numpy as np
 from matplotlib.colors import ListedColormap
 from mlp import NeuralNetMLP
-#import threading
 
 plt.rcParams['font.sans-serif'] = ['Microsoft JhengHei']
 plt.rcParams['axes.unicode_minus']=False
@@ -231,8 +230,8 @@ class Application():
         elif self.dim == 2:
             self.subf_pred.remove()
             self.subf_pred = self.f.add_subplot(1, 3, 2)
-            x0_min, x0_max = self.X_normal[:, 0].min() - 1, self.X_normal[:, 0].max() + 1
-            x1_min, x1_max = self.X_normal[:, 1].min() - 1, self.X_normal[:, 1].max() + 1
+            x0_min, x0_max = self.X[:, 0].min() - 1, self.X[:, 0].max() + 1
+            x1_min, x1_max = self.X[:, 1].min() - 1, self.X[:, 1].max() + 1
             xx, yy = np.meshgrid(np.arange(x0_min, x0_max, 0.1), np.arange(x1_min, x1_max, 0.1))
             pred_ALL = self.mlp.predict(np.c_[xx.ravel(),yy.ravel()]).reshape(xx.shape)
 
@@ -486,7 +485,7 @@ class Application():
                 if (self.cost_trigger < 1):
                     raise ValueError('ValueError: ','成本不可大於先前次數 參數錯誤')
             else:
-                self.acc = None
+                self.cost_trigger = None
 
         except Exception as e:
             showinfo('錯誤','收斂條件設定錯誤，\n請注意輸入格式！\n\n說明:\n\n  學習循環次數應大於 1 且為整數\n\n  (選)成本限制應為數值\n\n (選)訓練辨識率限制為 0 ~ 1 之間的浮點數\n\n  (選)成本不可大於先前次數必為整數且大於等於1')
