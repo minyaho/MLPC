@@ -66,10 +66,12 @@ class Application():
         # Row 1
         self.frame_open = tk.Frame(self.root)
         self.lb_0 = tk.Label(self.frame_open, text="開啟文件" , font=(self.font_name, 10))#, width="30", height="5")
-        self.lb_0.grid(row=0,column=0)
+        self.lb_0.grid(row=0,column=0, padx=5)
         self.bt_open = tk.Button(self.frame_open, text='開啟', font=(self.font_name, 10), command=self.open_file)
-        self.bt_open.grid(row=0, column=1)
-        self.frame_open.grid(row=1, column=0)
+        self.bt_open.grid(row=0, column=1, padx=5)
+        self.lb_author = tk.Label(self.frame_open, text="作者: minyaho" , font=(self.font_name, 10))#, width="30", height="5")
+        self.lb_author.grid(row=0,column=2, padx=15)
+        self.frame_open.grid(row=1, column=0 ,columnspan=2)
 
         # Row 2
         # 訓練設定介面區
